@@ -2,5 +2,12 @@ from interface import PriceGeneratorBase
 import numpy as np
 
 class randomPricesNumpy(PriceGeneratorBase):
-    def random_prices_numpy(self,num:int)->list[float]:
-        return  np.random.rand(num)
+    def _generate_prices_implementation(self,num:int)->list[float]:
+        return  np.round(np.random.rand(num), 2)
+    
+    def random_prices_numpy(self, num:int)->list[float]:
+        return self._generate_prices_implementation(num)
+    
+
+
+print(randomPricesNumpy().random_prices_numpy(3))
