@@ -10,4 +10,3 @@ class randomPricesNumpy(PriceGeneratorBase):
     
 
 
-print(randomPricesNumpy().random_prices_numpy(3))

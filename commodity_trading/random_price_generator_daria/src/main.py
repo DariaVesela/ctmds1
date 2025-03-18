@@ -1,8 +1,7 @@
 import typer
 from enum import Enum
 from typing import Optional
-
-# Import your generators
+import time
 from interface import PriceGeneratorBase
 from random_generator_standard import standardPrices
 from random_generator_numpy import randomPricesNumpy
@@ -50,6 +49,36 @@ def generate(
     except RuntimeError as e:
         typer.echo(f"Error: {str(e)}", err=True)
         raise typer.Exit(code=1)
+
+@app.command()
+def compare(
+    count: int = typer.Argument(10000, help="Number of random prices to generate")
+):
+    """Compare the performance of standard and numpy implementations."""
+    # Create instances of both generators
+    standard_gen = standardPrices()
+    numpy_gen = randomPricesNumpy()
+    
+    # Measure standard implementation
+    start_time = time.time()
+    standard_gen.generate_prices(count)
+    standard_time = time.time() - start_time
+    
+    # Measure numpy implementation
+    start_time = time.time()
+    numpy_gen.generate_prices(count)
+    numpy_time = time.time() - start_time
+    
+    # Print results
+    typer.echo(f"Time to generate {count} prices:")
+    typer.echo(f"Standard implementation: {standard_time:.6f} seconds")
+    typer.echo(f"Numpy implementation: {numpy_time:.6f} seconds")
+    
+    # Calculate and show the speedup ratio
+    if numpy_time < standard_time:
+        typer.echo(f"Numpy is {standard_time/numpy_time:.2f}x faster")
+    else:
+        typer.echo(f"Standard is {numpy_time/standard_time:.2f}x faster")
 
 if __name__ == "__main__":
     app()

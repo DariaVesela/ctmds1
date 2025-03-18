@@ -8,7 +8,6 @@ class standardPrices(PriceGeneratorBase):
     def standard_price_generation(self, num:int)-> list[float]:
         return self._generate_prices_implementation(num)
 
-print(standardPrices().standard_price_generation(10))
 
 
 
