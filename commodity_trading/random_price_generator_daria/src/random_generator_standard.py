@@ -1,4 +1,4 @@
-from interface import PriceGeneratorBase
+from src.interface import PriceGeneratorBase
 import random
 
 class standardPrices(PriceGeneratorBase):
