@@ -6,6 +6,8 @@ from interface import PriceGeneratorBase
 from random_generator_standard import standardPrices
 from random_generator_numpy import randomPricesNumpy
 
+#add modifications for time granularity
+
 # Create a Typer app
 app = typer.Typer()
 
@@ -23,7 +25,11 @@ def generate(
     ),
     output_file: Optional[str] = typer.Option(
         None, "--output", "-o", help="Output file to save the prices"
-    )
+    ),
+    #new params:
+    for_date: Optional[str] = typer.Option(None, "--for-date", help="Date for hourly prices (YYYY-MM-DD)"),
+    country_code: Optional[str] = typer.Option(None, "--country", help="Country code (GB, FR, NL, DE, BE)"),
+    granularity: str = typer.Option("h", "--granularity", help="Granularity: 'h' for hourly, 'hh' for half-hourly")
 ):
     """Generate random prices using different implementations."""
     # Select the appropriate generator
