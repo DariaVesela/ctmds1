@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class PriceGeneratorBase():
+class PriceGeneratorBase(ABC):
 
     def generate_prices(self, num:int)->list[float]:
         if num < 0:

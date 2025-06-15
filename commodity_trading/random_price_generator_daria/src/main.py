@@ -5,8 +5,8 @@ import time
 from pathlib import Path
 import pendulum
 from interface import PriceGeneratorBase
-from random_generator_standard import StandardPrices
-from random_generator_numpy import RandomPricesNumpy
+from random_generator_standard import standardPrices
+from random_generator_numpy import randomPricesNumpy
 
 # Create a Typer app
 app = typer.Typer(help="Generate random prices using different implementations")
@@ -45,23 +45,20 @@ def get_dst_info_for_date(date_str: str, country_code: str) -> dict:
     day_after = target_date.add(days=1)
     
     # Line 6-8: Detect DST transitions by checking UTC offset changes
-    target_offset = target_date.utc_offset()
-    before_offset = day_before.utc_offset()
-    after_offset = day_after.utc_offset()
+    target_offset = target_date.offset
+    before_offset = day_before.offset
+    after_offset = day_after.offset
     
     # Line 9-16: Determine the type of day
-    if before_offset != target_offset:
-        # DST transition happened between day_before and target_date
-        if target_offset > before_offset:
-            return {"type": "fall_back", "hours": 25}  # Gained an hour
-        else:
-            return {"type": "spring_forward", "hours": 23}  # Lost an hour
-    elif target_offset != after_offset:
-        # DST transition happens between target_date and day_after
+    if target_offset != after_offset:
+        # DST transition happens during target_date (clocks change tonight)
         if after_offset > target_offset:
-            return {"type": "fall_back", "hours": 25}  # Will gain an hour
+            return {"type": "spring_forward", "hours": 23}  # Spring forward TODAY
         else:
-            return {"type": "spring_forward", "hours": 23}  # Will lose an hour
+            return {"type": "fall_back", "hours": 25}      # Fall back TODAY
+    elif before_offset != target_offset:
+        # DST transition happened yesterday, today is normal
+        return {"type": "normal", "hours": 24}
     else:
         return {"type": "normal", "hours": 24}
 
@@ -103,12 +100,7 @@ def format_prices_with_time_labels(prices: list[float], date_str: str, granulari
     # Line 7-8: Start at midnight
     current_time = target_date
     
-    # Line 9-10: Determine time increment based on granularity
-    if granularity == "h":
-        increment = pendulum.duration(hours=1)
-    else:  # granularity == "hh"
-        increment = pendulum.duration(minutes=30)
-    
+
     # Line 11-35: Generate time labels for the entire day
     while price_index < len(prices):
         # Line 12-13: Format time as HHMM
@@ -119,7 +111,10 @@ def format_prices_with_time_labels(prices: list[float], date_str: str, granulari
         
         # Line 16-17: Move to next time period
         price_index += 1
-        next_time = current_time.add(**increment.total_seconds_dict())
+        if granularity == "h":
+            next_time = current_time.add(hours=1)
+        else:
+            next_time = current_time.add(minutes=30)
         
         # Line 18-30: Handle DST transitions using pendulum's built-in logic
         if dst_info["type"] == "spring_forward":
@@ -138,7 +133,7 @@ def format_prices_with_time_labels(prices: list[float], date_str: str, granulari
                     formatted_prices.append(f"{time_str}: {prices[price_index]:.2f}")
                     price_index += 1
                     if price_index < len(prices):
-                        temp_time = temp_time.add(**increment.total_seconds_dict())
+                        temp_time = temp_time.add(hours=1) if granularity == "h" else temp_time.add(minutes=30)
                 next_time = temp_time
         
         current_time = next_time
@@ -151,7 +146,7 @@ def format_prices_with_time_labels(prices: list[float], date_str: str, granulari
 
 @app.command()
 def generate(
-    for_date: str = typer.Argument(..., help="Date for hourly prices (YYYY-MM-DD)"),
+    date_str: str = typer.Argument(..., help="Date for hourly prices (YYYY-MM-DD)"),
     country_code: str = typer.Argument(..., help="Country code (GB, FR, NL, DE, BE)"),
     generator: GeneratorType = typer.Option(
         GeneratorType.STANDARD, 
@@ -187,7 +182,7 @@ def generate(
     
     try:
         # Line 7-8: Calculate number of time periods needed
-        count = calculate_periods_for_date(for_date, granularity, country_code)
+        count = calculate_periods_for_date(date_str, granularity, country_code)
         
         # Line 9-10: Get base price for the country
         base_price = COUNTRY_BASE_PRICES[country_code]
@@ -200,21 +195,28 @@ def generate(
         
         # Line 14-18: Create the appropriate generator with calculated price range
         if generator == GeneratorType.STANDARD:
-            price_generator = StandardPrices(min_price=min_price, max_price=max_price)
+            price_generator = standardPrices()
         elif generator == GeneratorType.NUMPY:
-            price_generator = RandomPricesNumpy(min_price=min_price, max_price=max_price)
+            price_generator = randomPricesNumpy()
         else:
             typer.echo(f"Error: Unknown generator type: {generator}", err=True)
             raise typer.Exit(code=1)
         
         # Line 19-20: Generate the prices
-        typer.echo(f"Generating {count} prices for {country_code} on {for_date} ({granularity} granularity)...")
+        typer.echo(f"Generating {count} prices for {country_code} on {date_str} ({granularity} granularity)...")
         start_time = time.time()
         prices = price_generator.generate_prices(count)
+        # Scale prices to country-specific range
+        scaled_prices = []
+        for price in prices:
+            # Scale from 0-100 range to country-specific range
+            scaled_price = min_price + (price / 100.0) * (max_price - min_price)
+            scaled_prices.append(round(scaled_price, 2))
+        prices = scaled_prices
         generation_time = time.time() - start_time
         
         # Line 21-22: Format prices with time labels
-        formatted_prices = format_prices_with_time_labels(prices, for_date, granularity, country_code)
+        formatted_prices = format_prices_with_time_labels(prices, date_str, granularity, country_code)
         
         # Line 23-35: Output the results
         if output_file:
@@ -222,13 +224,13 @@ def generate(
                 with open(output_file, "w") as f:
                     for formatted_price in formatted_prices:
                         f.write(f"{formatted_price}\n")
-                typer.echo(f"Generated {count} prices for {country_code} on {for_date} and saved to {output_file}")
+                typer.echo(f"Generated {count} prices for {country_code} on {date_str} and saved to {output_file}")
                 typer.echo(f"Generation time: {generation_time:.4f} seconds")
             except IOError as e:
                 typer.echo(f"Error writing to file: {e}", err=True)
                 raise typer.Exit(code=1)
         else:
-            typer.echo(f"\nGenerated prices for {country_code} on {for_date}:")
+            typer.echo(f"\nGenerated prices for {country_code} on {date_str}:")
             for formatted_price in formatted_prices:
                 typer.echo(formatted_price)
             typer.echo(f"\nGeneration time: {generation_time:.4f} seconds")
