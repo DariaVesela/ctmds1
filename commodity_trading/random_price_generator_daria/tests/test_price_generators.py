@@ -50,3 +50,4 @@ class TestNumpyPrices:
         prices = self.generator.generate_prices(20)
         for price in prices:
             assert 0 <= price <= 100
+

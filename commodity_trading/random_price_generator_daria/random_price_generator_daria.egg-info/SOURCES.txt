@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+random_price_generator_daria.egg-info/PKG-INFO
+random_price_generator_daria.egg-info/SOURCES.txt
+random_price_generator_daria.egg-info/dependency_links.txt
+random_price_generator_daria.egg-info/requires.txt
+random_price_generator_daria.egg-info/top_level.txt
+src/__init__.py
+src/comparison.py
+src/interface.py
+src/main.py
+src/random_generator_numpy.py
+src/random_generator_standard.py
+tests/test_price_generators.py
