@@ -205,6 +205,3 @@ assert generator.standard_price_generation(3) == [75.0, 75.0, 75.0]
 3. Include unit tests for new features
 4. Update this README for new functionality
 
-## License
-
-[Your license here]
